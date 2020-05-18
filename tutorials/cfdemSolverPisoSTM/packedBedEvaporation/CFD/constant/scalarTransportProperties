@@ -1,0 +1,149 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.4                                   |
+|   \\  /    A nd           | Web:      http://www.openfoam.org               |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+
+    root            "";
+    case            "";
+    instance        "";
+    local           "";
+
+    class           dictionary;
+    object          scalarTransportProperties;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+//===========================================================================//
+// sub-models & settings
+
+//scalarTransportModel generalManual;
+scalarTransportModel generalPhaseChange; //allows evaporation of droplets suspended in air, cools air
+
+generalManualProps
+{
+    ScT 0.7; //optional
+    PrT 0.7; //optional
+
+    cpVolumetricFieldName   "cpRho"; 
+    rhoMixFieldName         "rhoMix"; 
+
+    //settings to allow for phase property updates
+    updateMixtureProperties true;
+
+    cpCarrier               1007;   //units: J/kg/K
+    rhoCarrier              1.188;  //units: kg/m³    
+
+    cpmuLiquid              4180;   //units: J/kg/K
+    rhomuLiquid             1000;   //units: kg/m³
+
+    cpmuVapor               1890;   //units: J/kg/K
+    rhomuVapor              0.581;  //units: kg/m³
+
+    cpdAverage              1;  
+    rhodAverage             1;  
+
+    cptau                   1;  
+    rhotau                  1;  
+
+    eulerianFields
+    (
+        muLiquid    //any concentration fields MUST be first to have correct numbering
+        muVapor   //any concentration fields MUST be first to have correct numbering
+        dAverage
+        tau
+        T
+    );
+    
+    //only required for generalPhaseChange
+    PhaseChangeParameters
+    {
+        phaseChangeModels
+        (
+            "evaporation"
+        );
+
+        //parameters for the vapor pressure model
+        parameterVap
+        (
+            8.07131
+            1730.63
+            -39.724
+            200     //minimal temperature
+            383     //maximal temperature
+        );
+
+        Rvap            461.5;      // gas constant of vapor
+    
+        alphaImExSplit  0.75;       // implicit/explicit splitting factor for source terms due to phase change
+
+        deltaHEvap      deltaHEvap  [0  2 -2 0 0 0 0] 2.50e6; // default: 2.50e6;   //for water, units: J/kg; deltaH_v
+        tEvap           tEvap       [0  0 1  0 0 0 0] 1.0e-4; //default: 1.0e-4;  //units: s; tEvap_ = d_d^2 / (6*Sh*D_Vapor)
+          
+   }
+
+    fvOptionsmuLiquid 
+    {
+
+            liquidInjection
+            {
+                type            scalarSemiImplicitSource;
+                active          true;
+                timeStart       0;
+                duration        9999;
+                scalarSemiImplicitSourceCoeffs
+                {
+
+                    selectionMode   cellSet;
+                    cellSet         quench; //needs to be generated with topoSet
+
+                    volumeMode      absolute; // specific;
+                    injectionRateSuSp
+                    {
+                        //WARNING: name of the source MUST correspond to the name of the field for which the fvOption is defined!
+                        muLiquid     (5e-4 0); //units: kg/s    (if volumeMode = absolute, this is the absolute quenching rate). Input: (<explicit value> <implicit coefficient>)
+                    }
+                }
+            }
+
+    };
+    fvOptionsmuVapor {};
+    fvOptionsdAverage {};
+    fvOptionstau 
+    {
+
+            justOne
+            {
+                type            scalarSemiImplicitSource;
+                active          true;
+                timeStart       0.0;
+                duration        9999;
+                scalarSemiImplicitSourceCoeffs
+                {
+
+                    selectionMode   all;
+//                  cellSet         quench; //needs to be generated with topoSet
+
+                    volumeMode      specific;
+                    injectionRateSuSp
+                    {
+                        //WARNING: name of the source MUST correspond to the name of the field for which the fvOption is defined!
+                        tau     (0 0); 
+                    }
+                }
+            }
+
+    };
+
+    fvOptionsT {};
+};
+// ************************************************************************* //

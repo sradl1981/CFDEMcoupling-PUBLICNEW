@@ -1,0 +1,35 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.2.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      topoSetDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+actions
+(
+    {
+        name quench;
+        type cellSet;
+        action new;
+
+        source cylinderToCell;
+        sourceInfo
+        {
+         p1		( 0.05   0.05  -99 );
+	     p2		( 0.05   0.05  -0.200 );	// L .. 10 % of wall distance;
+	     radius	999;	// D=L as vertical Grid 0.26 /2 > 9.03e-3 volumetric equivalent radius, i.e. volume flow / velocity
+        }
+    }
+);
+
+// ************************************************************************* //

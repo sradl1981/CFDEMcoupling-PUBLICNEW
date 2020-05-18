@@ -214,11 +214,11 @@ void eulerianScalarField::update(surfaceScalarField phi, volScalarField voidfrac
             const volScalarField& cpVolumetricField_(particleCloud_.mesh().lookupObject<volScalarField> (cpVolumetricFieldName_));
 
             #if defined(version40) || defined(versionv1612plus)
-            mSource_.primitiveFieldRef() /= cpVolumetricField_.primitiveField()+SMALL;
-            mSourceKImpl_.primitiveFieldRef() /= cpVolumetricField_.primitiveField()+SMALL;
+              mSource_.primitiveFieldRef() /= cpVolumetricField_.primitiveField()+SMALL;
+              mSourceKImpl_.primitiveFieldRef() /= cpVolumetricField_.primitiveField()+SMALL;
             #else
-            mSource_.internalField() /= cpVolumetricField_.internalField()+SMALL;
-            mSourceKImpl_.internalField() /= cpVolumetricField_.internalField()+SMALL;
+              mSource_.internalField() /= cpVolumetricField_.internalField()+SMALL;
+              mSourceKImpl_.internalField() /= cpVolumetricField_.internalField()+SMALL;
             #endif
         }
     }

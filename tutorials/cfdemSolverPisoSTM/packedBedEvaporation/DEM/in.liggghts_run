@@ -1,0 +1,114 @@
+include         ../DEM/in.variables
+
+echo            both
+log             ../DEM/log.liggghts
+thermo_log      ../DEM/post/thermo.txt
+
+# read packed bed and calc convective heat transfer
+atom_style      granular
+atom_modify     map array
+boundary        p p p
+newton          off
+
+communicate     single vel yes
+
+units           si
+processors      1 1 *
+
+# read the restart file
+read_restart    ../DEM/post/restart/liggghts.restart
+
+neighbor        ${r0} bin
+neigh_modify    delay 0 binsize 0.01
+
+
+# Material properties required for granular pair styles
+
+fix         m1 all property/global youngsModulus peratomtype 5.e6
+fix         m2 all property/global poissonsRatio peratomtype 0.45
+fix         m3 all property/global coefficientRestitution peratomtypepair 1 0.3
+fix         m4 all property/global coefficientFriction peratomtypepair 1 0.5
+
+# pair style
+pair_style  gran model hertz tangential history
+pair_coeff  * *
+
+# timestep, gravity
+timestep    0.00001
+fix         gravi all gravity 9.81 vector 0. 0. -1.
+
+# walls
+fix     zwalls1 all wall/gran model hertz tangential history primitive type 1 zplane 0.0
+fix     zwalls2 all wall/gran model hertz tangential history primitive type 1 zplane 1.1
+
+# cfd coupling
+fix         cfd all couple/cfd couple_every 100 mpi
+fix         cfd2 all couple/cfd/force
+
+
+# heat transfer
+fix         ftco all property/global thermalConductivity peratomtype ${thermalConductivity}  # lambda in [W/(K*m)]
+fix         ftca all property/global thermalCapacity peratomtype ${thermalCapacity}   # cp in [J/(kg*K)]
+fix         cfd3 all couple/cfd/convection T0 ${initTempParticle}
+
+# species transfer
+fix         specCap all property/global LpCapacity peratomtype 1.0
+fix         cfd4    all couple/cfd/speciesConvection speciesName Lp species0 ${LP0} #this fix will add all relevant exchange fields for the species. Lp is the VOLUME of liquid on the particles
+
+#----------------------------Freeze and stop all particles-----------------------------------------------------
+fix         nonMoveP all freeze #WARNING: must be places AFTER couple/cfd fix
+velocity    all set 0.0 0 0 units box
+velocity    all zero linear
+velocity    all zero angularIndividual
+
+# set particle temperature for the bed
+run         0
+region      total block INF INF INF INF INF INF units box
+set         region total property/atom Temp ${initTempParticle}
+
+#Probe mean particle temperature along bed, and write to file
+#variable regionZ0End   equal 1.5*${radiusParticles}
+
+variable regionZ0Start equal ${probePos0}-${radiusParticles}
+variable regionZ0End   equal ${probePos0}+${radiusParticles}
+variable regionZ1Start equal ${probePos1}-${radiusParticles}
+variable regionZ1End   equal ${probePos1}+${radiusParticles}
+variable regionZ2Start equal ${probePos2}-${radiusParticles}
+variable regionZ2End   equal ${probePos2}+${radiusParticles}
+region      regionZ0 block INF INF INF INF ${regionZ0Start} ${regionZ0End} units box
+region      regionZ1 block INF INF INF INF ${regionZ1Start} ${regionZ1End} units box
+region      regionZ2 block INF INF INF INF ${regionZ2Start} ${regionZ2End} units box
+
+group particlesZ0 region regionZ0
+group particlesZ1 region regionZ1
+group particlesZ2 region regionZ2
+
+compute T0      particlesZ0 reduce ave f_Temp[0]
+compute T1      particlesZ1 reduce ave f_Temp[0]
+compute T2      particlesZ2 reduce ave f_Temp[0]
+
+variable varT0 equal c_T0
+variable varT1 equal c_T1
+variable varT2 equal c_T2
+variable varT0Count equal count(particlesZ0)
+variable varT1Count equal count(particlesZ1)
+variable varT2Count equal count(particlesZ2)
+variable time equal step*${timeStep}
+
+fix fT0         all print ${dumpSteps} "${time} ${varT0} ${varT1} ${varT2}" file temperatureParticle.dat
+fix fT0Count    all print ${dumpSteps} "${time} ${varT0Count} ${varT1Count} ${varT2Count}" file regionParticleCount.dat
+
+# apply nve integration to all particles that are inserted as single particles
+fix         integr all nve/sphere
+
+# output settings, include total thermal energy
+compute         rke all erotate/sphere
+thermo_style    custom step atoms ke c_rke vol # f_heattransfer
+thermo          100
+thermo_modify   lost ignore norm no
+compute_modify  thermo_temp dynamic yes
+
+dump        dmp all custom ${dumpSteps} ../DEM/post/dump*.liggghts id type x y z vx vy vz fx fy fz diameter f_Temp[0] f_convectiveHeatFlux[0] f_Lp[0] f_LpFlux[0] 
+
+reset_timestep 0
+run         0

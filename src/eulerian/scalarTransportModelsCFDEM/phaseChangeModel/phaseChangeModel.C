@@ -142,7 +142,7 @@ void phaseChangeModel::update(const volScalarField&      voidfraction,   //this 
 #else
     fromField.mSource().internalField()     -= (1-alphaImExSplit_) * tempF.internalField()  * fromField.m()
 #endif
-                                              / tEvap_.value()  //characteristic evaporation time
+                                              / tEvap_  //characteristic evaporation time
                                             * (   
                                                  mSaturation_ 
                                                - toField.m()
@@ -154,14 +154,14 @@ void phaseChangeModel::update(const volScalarField&      voidfraction,   //this 
 #else
     fromField.mSourceKImpl().internalField()  -= alphaImExSplit_ * tempF.internalField() 
 #endif
-                                              / tEvap_.value()  //characteristic evaporation time
+                                              / tEvap_  //characteristic evaporation time
                                             * (   
                                                  mSaturation_ 
                                                - toField.m()
                                                 *fromField.rhoCarrier()
                                               );
 
-    tempF *= fromField.m() / tEvap_.value(); //phi_liquid ... (global) liquid volume fraction
+    tempF *= fromField.m() / tEvap_; //phi_liquid ... (global) liquid volume fraction
                                              //divided by evaporation time scale
 
 
@@ -197,7 +197,12 @@ void phaseChangeModel::setEnthalpySource(const eulerianScalarField& Temperature)
 {
 
     //update the heat source
-#if defined(version40) || defined(versionv1612plus)
+#if defined(version50)
+       Temperature.mSource().primitiveFieldRef() -= mSource_.primitiveFieldRef()
+                                           * (   deltaHEvap_.value() 
+                                               - Temperature.m().primitiveFieldRef() * (cpFromField_ - cpToField_)
+                                             );
+#elif defined(version40) || defined(versionv1612plus)
        Temperature.mSource() -= mSource_
                                            * (   deltaHEvap_.value() 
                                                - Temperature.m() * (cpFromField_ - cpToField_)

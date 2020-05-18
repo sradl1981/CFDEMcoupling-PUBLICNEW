@@ -1,0 +1,327 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.4                                   |
+|   \\  /    A nd           | Web:      http://www.openfoam.org               |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+
+    root            "";
+    case            "";
+    instance        "";
+    local           "";
+
+    class           dictionary;
+    object          couplingProperties;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+//===========================================================================//
+// sub-models & settings
+solveFlow   true;
+
+modelType B; // A or B
+
+couplingInterval 500;
+
+voidFractionModel divided;
+
+locateModel engine;
+
+meshMotionModel noMeshMotion;
+
+IOModel basicIO;
+
+probeModel particleProbe;
+
+dataExchangeModel twoWayMPI;
+
+averagingModel dense;//dilute;//
+
+clockModel off;//standardClock;//
+
+smoothingModel off;
+
+forceModels
+(
+    KochHillDrag
+    Archimedes
+
+    scalarParticleFilter                //allows transfer of liquid droplets to particles
+    scalarGeneralExchangePhaseChange    //allows evaporation from particles
+    scalarGeneralExchange               //allows particle-gas heat exchange
+);
+
+momCoupleModels
+(
+    implicitCouple
+);
+
+//turbulenceModelType RASProperties;//LESProperties;//OFversion24x
+turbulenceModelType turbulenceProperties;//OFversion30x
+
+//===========================================================================//
+// sub-model properties
+particleProbeProps
+{
+    particleIDsToSample (0);
+    verboseToFile;      //main switch
+    printEvery 5;      //print every this many CFD time steps
+//    sampleAll;          //Activate sampling for all particles
+    probeDebug;         //probes additional fields
+    includePosition;    //will include particle position in the output file
+    writePrecision 4;   //number of significant digits to print
+}
+
+scalarParticleFilterProps
+{
+    scalarTransportModelName generalManual;
+
+    suppressProbe false; //can be used to suppress the output of the probe model
+
+    dropletDensity          1001;
+    dropletDiameter         21e-6;
+
+    //verbose                 true;
+    verboseToDisk           true;
+    verboseDiskIntervall    2;
+    interpolation           true;
+
+    //Lists with information for each species FOR THE PARTICLES
+    //MUST be in the same order as eulerian species in 'scalarTransportProperties'
+    //MUST correspond to property/atom in ligghts (use 'couple/cfd/speciesConvection' to auto-generate individual fields)
+    //if "none" is specified, the particle property willy not be drawn, and coupling flux will be set to zero
+    //if "zero" is specified, the particle property willy not be drawn, and zero will be assumed for this quantity
+    isDropletCloud
+    (
+        true    //muLiquid
+        false   //muVapor 
+        false   //dAverage
+        false   //tau
+    );
+    partSpeciesNames
+    (
+        Lp      //muLiquid
+        none    //muVapor 
+        none    //dAverage
+        none    //tau
+    );
+    partSpeciesFluxNames
+    (
+        LpFlux   //speciesCFlux
+        none    //muVapor 
+        none    //dAverage
+        none    //tau
+    );
+
+}
+
+
+scalarGeneralExchangeProps
+{
+/*    verbose                 true;*/
+    velFieldName            "U";
+    voidfractionFieldName   "voidfraction";
+    tempFieldName           "T";
+    partTempName            "Temp";
+    partHeatFluxName        "convectiveHeatFlux";
+    lambda                  0.0256;
+    Prandtl                 70; //WARNING: this is not a typical gas - just for testing purposes!
+    useLiMason              false;  
+  
+    //Lists with information for each species FOR THE PARTICLES
+    //MUST be in the same order as eulerian species in 'scalarTransportProperties'
+    //MUST correspond to property/atom in ligghts (use 'couple/cfd/speciesConvection' to auto-generate individual fields)
+    partSpeciesNames //Important: 'none' DEACTIVATES the flux or transfer calulation, 'zero' uses 0 as particle quantity
+    (
+        none    //muLiquid
+        none    //muVapor 
+        none    //dAverage
+        none    //tau
+    );
+    partSpeciesFluxNames
+    (
+        none      //muLiquidFlux
+        LpFlux    //muVaporFlux
+        none      //dAverage
+        none      //tau
+    );
+    partSpeciesTransCoeffNames
+    (
+        none    //muLiquidTransCoeff
+        none
+        none
+        none
+    );
+    partSpeciesFluidNames
+    (
+        none    //muLiquidFluid
+        none
+        none
+        none
+    );
+    DMolecular
+    (
+        0      //muLiquid
+        0      //muVapor
+        0      //dAverage
+        0      //tau
+    );
+    //parameters for the vapor pressure model
+    parameterVap
+    (
+        0
+    );
+
+}
+
+scalarGeneralExchangePhaseChangeProps
+{
+
+    verboseToDisk           true;
+    verboseDiskIntervall    2;
+
+    //verbose                 true;
+    interpolation           true;
+
+    velFieldName            "U";
+    voidfractionFieldName   "voidfraction";
+    tempFieldName           "T";
+    partTempName            "Temp";
+    partHeatFluxName        "convectiveHeatFlux";
+    lambda                  0.0256;
+    Prandtl                 0; //WARNING: keep zero here
+    useLiMason              false;  
+
+    //Lists with information for each species FOR THE PARTICLES
+    //MUST be in the same order as eulerian species in 'scalarTransportProperties'
+    //MUST correspond to property/atom in ligghts (use 'couple/cfd/speciesConvection' to auto-generate individual fields)
+    //if "none" is specified, the particle property willy not be drawn, and coupling flux will be set to zero, i.e., calculation will be skipped
+    //if "zero" is specified, the particle property willy not be drawn, and zero will be assumed for this quantity
+    partSpeciesNames //Important: 'none' DEACTIVATES the flux or transfer calulation, 'zero' uses 0 as particle quantity
+    (
+        none    //muLiquid
+        Lp      //muVapor 
+        none    //dAverage
+        none    //tau
+    );
+    partSpeciesFluxNames
+    (
+        none      //muLiquidFlux
+        LpFlux    //muVaporFlux
+        none      //dAverage
+        none      //tau
+    );
+    partSpeciesTransCoeffNames
+    (
+        none    //muLiquidTransCoeff
+        none
+        none
+        none
+    );
+    partSpeciesFluidNames
+    (
+        none    //muLiquidFluid
+        none
+        none
+        none
+    );
+    DMolecular
+    (
+        0      //muLiquid
+        1e-5   //muVapor
+        0      //dAverage
+        0      //tau
+    );
+
+    //parameters for the vapor pressure model
+    parameterVap
+    (
+        8.07131     //A
+        1730.63     //B
+       -39.724      //C
+        200         //minimal temperature
+        383         //maximal temperature
+    );
+
+    deltaHEvap deltaHEvap  [0  2 -2 0 0 0 0] 2.50e6; // default: 2.50e6;  for water, units: J/kg;
+    Rvap                                     461.5;      // gas constant of vapor
+    availableAreaModel                       "linear"; //default: "linear"
+    LpStarNoEvaporation                      0.0;
+    availableAreaLinearFactor                1.0;
+}
+
+
+implicitCoupleProps
+{
+    velFieldName "U";
+    granVelFieldName "Us";
+    voidfractionFieldName "voidfraction";
+    //KslLimit 0;  // source switched off!!!
+}
+
+explicitCoupleProps
+{
+    //fLimit (0 0 0);
+}
+
+KochHillDragProps
+{
+    velFieldName "U";
+    voidfractionFieldName "voidfraction";
+}
+
+DiFeliceDragProps
+{
+    velFieldName "U";
+    //verbose true;
+}
+
+ArchimedesProps
+{
+    gravityFieldName "g";
+}
+gradPForceProps
+{
+    pFieldName "p";
+    voidfractionFieldName "voidfraction";
+    velocityFieldName "U";
+    //interpolation true;
+}
+
+viscForceProps
+{
+    velocityFieldName "U";
+    interpolation true;
+}
+
+twoWayMPIProps
+{
+    maxNumberOfParticles 10000;
+    liggghtsPath "../DEM/in.liggghts_run";
+}
+
+centreProps
+{
+    alphaMin 0.1;
+}
+
+dividedProps
+{
+    alphaMin 0.4;
+    scaleUpVol 1.0;
+}
+
+engineProps
+{
+    treeSearch true;
+}
+
+// ************************************************************************* //

@@ -69,6 +69,9 @@ $(forceModels)/virtualMassForce/virtualMassForce.C
 $(forceModels)/viscForce/viscForce.C
 $(forceModels)/volWeightedAverage/volWeightedAverage.C
 
+$(forceModels)/scalarGeneralExchangePhaseChange/scalarGeneralExchangePhaseChange.C
+$(forceModels)/scalarParticleFilter/scalarParticleFilter.C
+
 $(forceSubModels)/forceSubModel/forceSubModel.C
 $(forceSubModels)/forceSubModel/newForceSubModel.C
 $(forceSubModels)/ImEx/ImEx.C
